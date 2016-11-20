@@ -9,7 +9,9 @@ public class HtmlParserTest {
 
     public static void main(String[] args) {
         HtmlParser parser = new HtmlParser();
-        SimpleHttpClient client = new SimpleHttpClient();
+        String referer = "http://jandan.net/ooxx"; // 链接过来的页面的URL
+
+        SimpleHttpClient client = new SimpleHttpClient(referer);
         String[] urlList = new String[5];
         urlList[0] = "http://jandan.net/ooxx/page-216";
         urlList[1] = "http://jandan.net/ooxx/page-217";

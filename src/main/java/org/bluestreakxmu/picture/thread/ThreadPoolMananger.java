@@ -29,21 +29,26 @@ public class ThreadPoolMananger {
     private final CountDownLatch end = new CountDownLatch(
             (DOWNLOAD_THREAD + PAGE_THREAD));
 
+    private final String referer;
+
     /**
      * 默认构造方法
+     *
+     * @param filePath 图片本地保存路径
      */
-    public ThreadPoolMananger() {
+    public ThreadPoolMananger(String filePath, String url, String referer) {
+        this.referer = referer;
         int i = 1;
         for (; i <= PAGE_THREAD; i++) {
             exec.submit(new PageThread(i, begin, end));
         }
         for (; i <= (DOWNLOAD_THREAD + PAGE_THREAD); i++) {
-            exec.submit(new ImageThread(i, "D:\\jiandan_picture", begin, end));
+            exec.submit(new ImageThread(i, filePath, begin, end));
         }
 
         HtmlParser parser = new HtmlParser();
-        SimpleHttpClient client = new SimpleHttpClient();
-        parser.setHtml(client.get("http://jandan.net/ooxx"));
+        SimpleHttpClient client = new SimpleHttpClient(referer);
+        parser.setHtml(client.get(url));
         System.out.println("====开始抓取首页");
         try {
             naviQueue.put(parser.getPageNavi());
@@ -57,15 +62,23 @@ public class ThreadPoolMananger {
     }
 
     private class ImageThread implements Runnable {
-        private final CountDownLatch startSignal;
-        private final CountDownLatch stopSignal;
-        private int threadIdx;
-        private String dest;
+        private final CountDownLatch startSignal; // 开始倒数锁
+        private final CountDownLatch stopSignal; // 结束倒数锁
+        private int threadIdx; // 线程序号
+        private String destFilePath; // 目标文件位置
 
-        ImageThread(int index, String dest, CountDownLatch start,
+        /**
+         * ImageThread构造函数
+         *
+         * @param index        线程序号
+         * @param destFilePath 目标文件位置
+         * @param start        开始倒数锁
+         * @param end          结束倒数锁
+         */
+        ImageThread(int index, String destFilePath, CountDownLatch start,
                     CountDownLatch end) {
             this.threadIdx = index;
-            this.dest = dest;
+            this.destFilePath = destFilePath;
             this.startSignal = start;
             this.stopSignal = end;
         }
@@ -76,23 +89,23 @@ public class ThreadPoolMananger {
                 // 等待初始的线程结束
                 startSignal.await();
             } catch (Exception e) {
-                // FIXME do nothing
+                // do nothing
             }
             System.out.println("[" + threadIdx + "]线程开始");
-            SimpleHttpClient client = new SimpleHttpClient();
-            String picurl = "";
+            SimpleHttpClient client = new SimpleHttpClient(referer);
+            String picUrl = "";
             int left = 0;
             // 这个线程不断的从图片队列里面取出图片的地址
             while (true) {
                 // 取出一个图片地址
                 try {
-                    picurl = imgQueue.take();
+                    picUrl = imgQueue.take();
                     left = imgQueue.size();
                 } catch (InterruptedException e1) {
                     System.err
                             .println("[" + threadIdx + "]:" + e1.getMessage());
                 }
-                if ("".equals(picurl)) {
+                if ("".equals(picUrl)) {
                     try {
                         // 结束标志，丢回去，其他的线程要根据这个判断结束
                         imgQueue.put("");
@@ -104,8 +117,8 @@ public class ThreadPoolMananger {
                 }
                 try {
                     System.out.println("[" + threadIdx + "][图片left:" + left
-                            + "]线程开始抓取image-->" + picurl);
-                    client.downloadFile(picurl, dest);
+                            + "]线程开始抓取image-->" + picUrl);
+                    client.downloadFile(picUrl, destFilePath);
                 } catch (Exception e) {
                     System.err.println("[" + threadIdx + "]:" + e.getMessage());
                 }
@@ -139,7 +152,7 @@ public class ThreadPoolMananger {
             String url = "";
             int left = 0;
             HtmlParser parser = new HtmlParser();
-            SimpleHttpClient client = new SimpleHttpClient();
+            SimpleHttpClient client = new SimpleHttpClient(referer);
             while (true) {
                 try {
                     url = naviQueue.take();

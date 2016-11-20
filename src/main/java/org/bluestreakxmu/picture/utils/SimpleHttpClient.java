@@ -30,8 +30,9 @@ public class SimpleHttpClient {
     private ThreadLocal<DefaultHttpClient> httpclient = new ThreadLocal<>();
 
     private static int imageName = 0;
+    private String referer;
 
-    public SimpleHttpClient() {
+    public SimpleHttpClient(String referer) {
         DefaultHttpClient client = HttpClientConnectionManager.getHttpClient();
         // 模拟浏览器，解决一些服务器程序只允许浏览器访问的问题
         client.getParams()
@@ -42,6 +43,8 @@ public class SimpleHttpClient {
 
         client.setHttpRequestRetryHandler(requestRetryHandler);
         httpclient.set(client);
+
+        this.referer = referer;
     }
 
     /**
@@ -52,7 +55,7 @@ public class SimpleHttpClient {
      */
     public String get(String url) {
         HttpGet hg = new HttpGet(url);
-        hg.addHeader("Referer", "http://jandan.net/ooxx"); // FIXME
+        hg.addHeader("Referer", referer); // 链接过来的页面的URL
         hg.addHeader(
                 "Accept",
                 "application/x-ms-application, image/jpeg, application/xaml+xml, image/gif, image/pjpeg, application/x-ms-xbap, */*");
@@ -94,7 +97,7 @@ public class SimpleHttpClient {
         String fullPath = dir + (imageName++);
 
         HttpGet httpget = new HttpGet(url);
-        httpget.addHeader("Referer", "http://jandan.net/ooxx"); // FIXME
+        httpget.addHeader("Referer", referer);
 
         HttpResponse response = httpclient.get().execute(httpget);
         String type;
